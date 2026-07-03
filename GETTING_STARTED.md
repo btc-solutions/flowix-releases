@@ -66,6 +66,8 @@ A **mock** defines how Flowix responds to specific SQL queries.
 
 ### Creating a New Mock
 
+You can first create a mock by tracing the application’s query. See [SQL Tracing](#sql-tracing)
+
 1. Make sure the server is running
 2. In the **Mocks** tab, right-click on a folder (or the root "mocks" folder)
 3. Select **Add Mock**
@@ -180,12 +182,15 @@ Tracing captures SQL queries sent by your application, helping you understand wh
 
 1. Start the Flowix server
 2. Click the **Start Tracing** button in the toolbar
+3. Run your application
 
 ### Viewing Captured Queries
 
-Switch to the **Traces** tab to see intercepted queries:
+Switch to the **Traces** tab to see intercepted queries. It may take several seconds to update the tree.
 
-Each trace is a read-only mock. You can manually copy it to the mocks folder using the Project Tree.
+Each trace is a read-only mock. You can copy it to the mocks folder.
+
+![img](images/trace_copy.png)
 
 > Tracing works only for real queries, not proxied ones.
 
@@ -196,9 +201,8 @@ Configure filters in `flowix.yaml` to capture only specific queries:
 ```yaml
 flowix:
   tracing:
-    filters:
-      - "FROM users"
-      - "INSERT INTO"
+     includeFilters: ["FROM users", "INSERT INTO"]  
+     excludeFilters: []
 ```
 
 ---
