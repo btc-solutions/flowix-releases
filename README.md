@@ -7,6 +7,8 @@ Plugin for mocking PostgreSQL queries in JetBrains IDEs. Intercepts SQL queries 
 
 Currently supports PostgreSQL. Other databases are planned for future support.
 
+See the [Getting Started Guide](GETTING_STARTED.md) for setup instructions and an overview of the main features.
+
 ### Features:
 - Mock PostgreSQL query responses based on patterns
 - Configure predefined result sets for SQL queries
