@@ -12,7 +12,8 @@ Welcome to Flowix DB Tool! This guide will help you get up and running with the 
 6. [Enable/Disable](#enable-disable)
 7. [Data Generation](#data-generation)
 8. [SQL Tracing](#sql-tracing)
-9. [File Locations](#file-locations)
+9. [Query Statistics](#query-statistics)
+10. [File Locations](#file-locations)
 
 ---
 
@@ -204,6 +205,23 @@ flowix:
      includeFilters: ["FROM users", "INSERT INTO"]  
      excludeFilters: []
 ```
+
+---
+
+## Query Statistics
+
+While the server is running, click the **Statistics** button in the toolbar to inspect the queries processed by Flowix.
+
+The list shows both forwarded and mocked queries and updates as new queries arrive. Select a query to view:
+
+- The complete SQL text
+- The number of columns and rows in the result
+- The query start time and duration
+- The mock that handled the query, when applicable
+
+The **Total** and **Mocked** counters provide a quick overview of query activity. For a mocked query, click the button next to **Mock** to navigate to its mock. You can also export the collected statistics to a CSV file using the export button in the upper-left corner.
+
+![img](images/statistics.png)
 
 ---
 
