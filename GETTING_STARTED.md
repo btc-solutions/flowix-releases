@@ -5,15 +5,17 @@ Welcome to Flowix DB Tool! This guide will help you get up and running with the 
 ## Table of Contents
 
 1. [First Launch & Configuration](#first-launch--configuration)
-2. [Starting the Server](#starting-the-server)
-3. [Creating Your First Mock](#creating-your-first-mock)
-4. [Check Interception Result](#check-interception-result)
-5. [SQL Pattern Matching](#sql-pattern-matching)
-6. [Enable/Disable](#enable-disable)
-7. [Data Generation](#data-generation)
-8. [SQL Tracing](#sql-tracing)
-9. [Query Statistics](#query-statistics)
-10. [File Locations](#file-locations)
+2. [TLS Configuration](#tls-configuration)
+3. [Starting the Server](#starting-the-server)
+4. [Creating Your First Mock](#creating-your-first-mock)
+5. [Check Interception Result](#check-interception-result)
+6. [SQL Pattern Matching](#sql-pattern-matching)
+7. [Enable/Disable](#enabledisable)
+8. [Data Generation](#data-generation)
+9. [SQL Tracing](#sql-tracing)
+10. [Query Statistics](#query-statistics)
+11. [Performance Optimization](#performance-optimization)
+12. [File Locations](#file-locations)
 
 ---
 
@@ -33,17 +35,60 @@ The Flowix DB Tool window appears on the left side of your IDE. If you don't see
 On first launch, Flowix creates a configuration file at `.flowix/flowix.yaml` in your project root:
 
 ```yaml
+schemaVersion: 2
+
 database:                   
   host: "localhost"         # PostgreSQL host          
   port: 5432                # PostgreSQL port   
+  sslMode: prefer           # TLS mode for the connection from Flowix to PostgreSQL
+  # sslRootCert: /home/user/.postgresql/root.crt  # Absolute path to a PEM CA file; required for verify-ca and verify-full
 
 flowix:
   localPort: 10001          # Port for the Flowix backend         
   managePort: 7777          # Port for communication between IDE plugin and backend
   autonomousMode: false     # Run Flowix without a real database; all data must be provided via mocks (experimental)
   logLevel: INFO            # Log level for the backend process (FINEST, INFO, SEVERE, OFF)
+  csvLoading: eager         # eager: load CSV into memory; streaming: read CSV during each query
+  # maxHeapSize: 512         # Optional backend Java heap limit in MB (JVM -Xmx)
   tracing:
-    filters: []             # SQL query filters. Only queries containing these values will be intercepted.
+    includeFilters: []      # SQL patterns to include in tracing; take priority over excludeFilters
+    excludeFilters: []      # SQL patterns to exclude from tracing
+```
+
+---
+
+## TLS Configuration
+
+Configure TLS for the connection **from Flowix to PostgreSQL** in the `database` section of `.flowix/flowix.yaml` using `sslMode`.
+
+![Application and Flowix on localhost, with an unencrypted client connection, local YAML and CSV mocks, and a PostgreSQL connection controlled by sslMode](images/tls-connections.png)
+
+Available modes:
+
+| Mode | Behavior |
+|------|----------|
+| `disable` | Connect without TLS. |
+| `prefer` (default) | Try TLS and fall back to an unencrypted connection if TLS negotiation fails or the server does not support TLS. The server certificate is not verified. |
+| `require` | Require TLS without verifying the server certificate. Fail if TLS cannot be established. |
+| `verify-ca` | Require TLS and verify the server certificate chain using the configured CA certificates. |
+| `verify-full` | Perform the same checks as `verify-ca` and also verify that `database.host` matches the server certificate. |
+
+For example, update the existing `database` section to require TLS with certificate and hostname verification:
+
+```yaml
+database:
+  host: "db.example.com"
+  port: 5432
+  sslMode: verify-full
+  sslRootCert: /home/user/.postgresql/root.crt
+```
+
+For `verify-ca` and `verify-full`, `sslRootCert` is required and must be an **absolute path** to a readable PEM file containing trusted CA certificates. With `verify-full`, use the database hostname listed in the server certificate. The `sslRootCert` setting is ignored by the other TLS modes.
+
+Connections **from your application to Flowix** remain unencrypted. Configure the application to connect to the Flowix host and `flowix.localPort` with TLS disabled, for example:
+
+```text
+jdbc:postgresql://localhost:10001/mydb?sslmode=disable
 ```
 
 ---
@@ -222,6 +267,42 @@ The list shows both forwarded and mocked queries and updates as new queries arri
 The **Total** and **Mocked** counters provide a quick overview of query activity. For a mocked query, click the button next to **Mock** to navigate to its mock. You can also export the collected statistics to a CSV file using the export button in the upper-left corner.
 
 ![img](images/statistics.png)
+
+---
+
+## Performance Optimization
+
+Use `flowix.csvLoading` in `.flowix/flowix.yaml` to control how Flowix loads mock CSV data:
+
+| Mode | Behavior | Trade-off |
+|------|----------|-----------|
+| `eager` (default) | Load and parse the entire CSV into memory when the mock is loaded. Queries use the cached rows. | Suits frequently queried datasets that fit in memory. Large CSV files increase startup/loading time and heap usage. |
+| `streaming` | Read and parse CSV rows from disk during each query instead of keeping the entire dataset in memory. | Reduces memory needed for CSV data and allows larger datasets, but can reduce query performance. |
+
+**`streaming` can reduce performance because CSV loading and parsing move into query execution.** Each query reads and parses the file again, adding disk I/O and CPU work while the query is running. Use it when memory consumption is the limiting factor; keep `eager` when the data fits in memory and query speed is the priority. Omitting `csvLoading` keeps the default `eager` mode.
+
+To switch to streaming, update the existing `flowix` section:
+
+```yaml
+flowix:
+  # Keep your other flowix settings here.
+  csvLoading: streaming
+```
+
+### Backend Heap Size
+
+The optional `flowix.maxHeapSize` setting limits the Java heap of the Flowix backend in MB. For example, to keep CSV data in memory with a larger heap:
+
+```yaml
+flowix:
+  # Keep your other flowix settings here.
+  csvLoading: eager
+  maxHeapSize: 512
+```
+
+This passes `-Xmx512m` to the backend JVM. If `maxHeapSize` is omitted, the JVM chooses its default heap limit. This setting applies to the backend process, not the IDE, and does not limit the backend's total memory usage.
+
+If a large CSV cannot be loaded due to insufficient heap memory, switch to `streaming` or increase `maxHeapSize` if your machine has enough available RAM. In `eager` mode, parsed CSV data can occupy more memory than the CSV file itself. Restart the Flowix server after changing `csvLoading` or `maxHeapSize`.
 
 ---
 
