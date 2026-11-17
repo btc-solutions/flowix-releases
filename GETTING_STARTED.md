@@ -41,7 +41,7 @@ database:
   host: "localhost"         # PostgreSQL host          
   port: 5432                # PostgreSQL port   
   sslMode: prefer           # TLS mode for the connection from Flowix to PostgreSQL
-  # sslRootCert: /home/user/.postgresql/root.crt  # Absolute path to a PEM CA file; required for verify-ca and verify-full
+  # sslRootCert: '${env:FLOWIX_SSL_ROOT_CERT}'  # System environment variable with an absolute PEM CA path; required for verify-ca and verify-full
 
 flowix:
   localPort: 10001          # Port for the Flowix backend         
@@ -80,10 +80,18 @@ database:
   host: "db.example.com"
   port: 5432
   sslMode: verify-full
-  sslRootCert: /home/user/.postgresql/root.crt
+  sslRootCert: '${env:FLOWIX_SSL_ROOT_CERT}'
 ```
 
-For `verify-ca` and `verify-full`, `sslRootCert` is required and must be an **absolute path** to a readable PEM file containing trusted CA certificates. With `verify-full`, use the database hostname listed in the server certificate. The `sslRootCert` setting is ignored by the other TLS modes.
+For `verify-ca` and `verify-full`, `sslRootCert` is required and must resolve to an **absolute path** to a readable PEM file containing trusted CA certificates. With `verify-full`, use the database hostname listed in the server certificate. The `sslRootCert` setting is ignored by the other TLS modes.
+
+The **JetBrains plugin** supports `${env:NAME}` in `sslRootCert`. For the example above, set the system environment variable `FLOWIX_SSL_ROOT_CERT` to your certificate's absolute path, such as `/home/user/.postgresql/root.crt`.
+
+A literal absolute path is also supported:
+
+```yaml
+  sslRootCert: /home/user/.postgresql/root.crt
+```
 
 Connections **from your application to Flowix** remain unencrypted. Configure the application to connect to the Flowix host and `flowix.localPort` with TLS disabled, for example:
 
